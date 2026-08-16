@@ -5,6 +5,7 @@ const nextBtn = document.getElementById("nextBtn");
 const disconnectBtn = document.getElementById("disconnectBtn");
 const muteBtn = document.getElementById("muteBtn");
 const cameraBtn = document.getElementById("cameraBtn");
+const reportBtn = document.getElementById("reportBtn");
 
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
@@ -26,7 +27,9 @@ startBtn.addEventListener("click", start);
 
 nextBtn.addEventListener("click", () => {
     cleanupConnection();
+
     socket.emit("next");
+
     statusText.textContent = "Finding another person...";
 });
 
@@ -43,13 +46,15 @@ disconnectBtn.addEventListener("click", () => {
     startBtn.disabled = false;
     nextBtn.disabled = true;
     disconnectBtn.disabled = true;
+    reportBtn.disabled = true;
     muteBtn.disabled = true;
     cameraBtn.disabled = true;
 
     muteBtn.textContent = "Mute";
     cameraBtn.textContent = "Camera Off";
 
-    statusText.textContent = "Disconnected. Click Start to begin again.";
+    statusText.textContent =
+        "Disconnected. Click Start to begin again.";
 });
 
 muteBtn.addEventListener("click", () => {
@@ -59,7 +64,9 @@ muteBtn.addEventListener("click", () => {
 
     if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
-        muteBtn.textContent = audioTrack.enabled ? "Mute" : "Unmute";
+
+        muteBtn.textContent =
+            audioTrack.enabled ? "Mute" : "Unmute";
     }
 });
 
@@ -70,28 +77,46 @@ cameraBtn.addEventListener("click", () => {
 
     if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
-        cameraBtn.textContent = videoTrack.enabled
-            ? "Camera Off"
-            : "Camera On";
+
+        cameraBtn.textContent =
+            videoTrack.enabled ? "Camera Off" : "Camera On";
+    }
+});
+
+reportBtn.addEventListener("click", () => {
+    if (!partnerId) return;
+
+    const confirmed = confirm(
+        "Report this person for inappropriate behavior?"
+    );
+
+    if (confirmed) {
+        alert("Thank you. Your report has been recorded.");
     }
 });
 
 async function start() {
     try {
-        statusText.textContent = "Requesting camera and microphone...";
+        statusText.textContent =
+            "Requesting camera and microphone...";
 
-        localStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true
-        });
+        localStream =
+            await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true
+            });
 
         localVideo.srcObject = localStream;
 
         startBtn.disabled = true;
+        nextBtn.disabled = true;
+        disconnectBtn.disabled = false;
+        reportBtn.disabled = true;
         muteBtn.disabled = false;
         cameraBtn.disabled = false;
 
-        statusText.textContent = "Looking for a stranger...";
+        statusText.textContent =
+            "Looking for a stranger...";
 
         socket.connect();
 
@@ -116,11 +141,13 @@ socket.on("matched", async ({ partnerId: id }) => {
 
     nextBtn.disabled = false;
     disconnectBtn.disabled = false;
+    reportBtn.disabled = false;
 
     createPeerConnection();
 
     if (socket.id < partnerId) {
-        const offer = await peerConnection.createOffer();
+        const offer =
+            await peerConnection.createOffer();
 
         await peerConnection.setLocalDescription(offer);
 
@@ -146,7 +173,8 @@ socket.on("signal", async ({ sender, data }) => {
             new RTCSessionDescription(data.offer)
         );
 
-        const answer = await peerConnection.createAnswer();
+        const answer =
+            await peerConnection.createAnswer();
 
         await peerConnection.setLocalDescription(answer);
 
@@ -171,13 +199,20 @@ socket.on("signal", async ({ sender, data }) => {
                 new RTCIceCandidate(data.candidate)
             );
         } catch (error) {
-            console.error("ICE candidate error:", error);
+            console.error(
+                "ICE candidate error:",
+                error
+            );
         }
     }
 });
 
 socket.on("partnerDisconnected", () => {
     cleanupConnection();
+
+    nextBtn.disabled = true;
+    disconnectBtn.disabled = false;
+    reportBtn.disabled = true;
 
     statusText.textContent =
         "The stranger disconnected. Finding someone else...";
@@ -186,16 +221,21 @@ socket.on("partnerDisconnected", () => {
 });
 
 function createPeerConnection() {
-    peerConnection = new RTCPeerConnection(rtcConfig);
+    peerConnection =
+        new RTCPeerConnection(rtcConfig);
 
     if (localStream) {
         localStream.getTracks().forEach(track => {
-            peerConnection.addTrack(track, localStream);
+            peerConnection.addTrack(
+                track,
+                localStream
+            );
         });
     }
 
     peerConnection.ontrack = event => {
-        remoteVideo.srcObject = event.streams[0];
+        remoteVideo.srcObject =
+            event.streams[0];
 
         statusText.textContent =
             "Connected! You are chatting with a stranger.";
@@ -214,10 +254,12 @@ function createPeerConnection() {
     };
 
     peerConnection.onconnectionstatechange = () => {
-        console.log(
-            "Connection state:",
-            peerConnection.connectionState
-        );
+        if (peerConnection) {
+            console.log(
+                "Connection state:",
+                peerConnection.connectionState
+            );
+        }
     };
 }
 
@@ -231,4 +273,6 @@ function cleanupConnection() {
 
     remoteVideo.srcObject = null;
     partnerId = null;
+
+    reportBtn.disabled = true;
 }

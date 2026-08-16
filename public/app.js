@@ -32,10 +32,24 @@ nextBtn.addEventListener("click", () => {
 
 disconnectBtn.addEventListener("click", () => {
     cleanupConnection();
-    statusText.textContent = "Disconnected";
 
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+    }
+
+    localVideo.srcObject = null;
+
+    startBtn.disabled = false;
     nextBtn.disabled = true;
     disconnectBtn.disabled = true;
+    muteBtn.disabled = true;
+    cameraBtn.disabled = true;
+
+    muteBtn.textContent = "Mute";
+    cameraBtn.textContent = "Camera Off";
+
+    statusText.textContent = "Disconnected. Click Start to begin again.";
 });
 
 muteBtn.addEventListener("click", () => {
@@ -209,6 +223,8 @@ function createPeerConnection() {
 
 function cleanupConnection() {
     if (peerConnection) {
+        peerConnection.onicecandidate = null;
+        peerConnection.ontrack = null;
         peerConnection.close();
         peerConnection = null;
     }
